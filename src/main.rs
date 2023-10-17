@@ -2,25 +2,22 @@ use clap::{command, Parser};
 use pixels::{Pixels, SurfaceTexture};
 use winit::{
     dpi::PhysicalSize,
-    event::{self, ElementState, VirtualKeyCode, WindowEvent},
+    event::{self, ElementState, WindowEvent},
     event_loop::EventLoop,
     window::WindowBuilder,
 };
 
-use crate::draw::draw;
+use crate::{draw::draw, focus::ImageFocus, process::process_images};
 
 mod draw;
+mod focus;
+mod process;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
     #[arg(short, long)]
     paths: Vec<String>,
-}
-
-struct ImageFocus {
-    x_offset: i32,
-    y_offset: i32,
 }
 
 fn main() {
@@ -54,10 +51,7 @@ fn main() {
         Pixels::new(window_size.width, window_size.height, surface_texture).unwrap()
     };
 
-    let mut image_focus = ImageFocus {
-        x_offset: 0,
-        y_offset: 0,
-    };
+    let mut image_focus = ImageFocus::new();
 
     let mut need_redraw = false;
 
@@ -72,12 +66,7 @@ fn main() {
                 WindowEvent::KeyboardInput { input, .. } => {
                     if input.state == ElementState::Released {
                         if let Some(code) = input.virtual_keycode {
-                            need_redraw = true;
-                            match code {
-                                VirtualKeyCode::W => image_focus.y_offset += 1,
-                                VirtualKeyCode::S => image_focus.y_offset -= 1,
-                                _ => need_redraw = false,
-                            }
+                            need_redraw = image_focus.update_on_key_input(code);
                         }
                     }
                 }
@@ -86,16 +75,16 @@ fn main() {
             event::Event::RedrawRequested(_) => pixels.render().unwrap(),
             event::Event::MainEventsCleared => {
                 if need_redraw {
-                    log::info!("Redrawing...");
+                    log::debug!("Redrawing...");
                     let window_size = window.outer_size();
-                    log::info!("{:?}", window_size);
                     pixels
                         .resize_buffer(window_size.width, window_size.height)
                         .unwrap();
                     pixels
                         .resize_surface(window_size.width, window_size.height)
                         .unwrap();
-                    draw(&mut pixels, &images, (crop_width, crop_height));
+                    let processed_images = process_images(&images, &image_focus);
+                    draw(&mut pixels, &processed_images, (crop_width, crop_height));
                     window.request_redraw();
                     need_redraw = false;
                 }
