@@ -8,6 +8,8 @@ pub fn draw(
     (crop_width, crop_height): (u32, u32),
 ) {
     let mut result = RgbaImage::new(crop_width * images.len() as u32, crop_height);
+    log::info!("Result: {} {}", result.width(), result.height());
+
     for (idx, image) in images.iter().enumerate() {
         let rgba_image = image.to_rgba8();
         imageops::replace(
