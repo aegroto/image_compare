@@ -6,11 +6,20 @@ pub fn process_images(images: &Vec<DynamicImage>, focus: &ImageFocus) -> Vec<Dyn
     log::debug!("Reprocessing images with focus: {:?}", focus);
     images
         .iter()
-        .map(|image| process_image(&image, focus))
+        .map(|image| zoom_image(&image, focus))
+        .map(|image| resize_image(&image, focus))
         .collect()
 }
 
-fn process_image(input: &DynamicImage, focus: &ImageFocus) -> DynamicImage {
+fn zoom_image(input: &DynamicImage, focus: &ImageFocus) -> DynamicImage {
+    input.resize(
+        (input.width() as f32 * focus.zoom) as u32,
+        (input.height() as f32 * focus.zoom) as u32,
+        imageops::FilterType::Nearest,
+    )
+}
+
+fn resize_image(input: &DynamicImage, focus: &ImageFocus) -> DynamicImage {
     let mut output = DynamicImage::ImageRgba8(RgbaImage::new(input.width(), input.height()));
 
     let (x, replace_x, width) = apply_offset(input.width(), focus.x_offset);
