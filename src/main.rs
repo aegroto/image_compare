@@ -18,6 +18,10 @@ mod process;
 struct Args {
     #[arg(short, long)]
     paths: Vec<String>,
+    #[arg(short, long)]
+    crop_width: u32,
+    #[arg(short, long)]
+    crop_height: u32,
 }
 
 fn main() {
@@ -31,12 +35,17 @@ fn main() {
         .paths
         .iter()
         .map(|path| image::io::Reader::open(path).unwrap().decode().unwrap())
+        .map(|image| {
+            image.resize(
+                args.crop_width,
+                args.crop_height,
+                image::imageops::FilterType::Nearest,
+            )
+        })
         .collect();
 
-    let crop_width: u32 = 768;
-    let crop_height: u32 = 512;
     let crops_count = images.len() as u32;
-    let window_size = PhysicalSize::new(crop_width * crops_count, crop_height);
+    let window_size = PhysicalSize::new(args.crop_width * crops_count, args.crop_height);
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
@@ -53,7 +62,7 @@ fn main() {
 
     let mut image_focus = ImageFocus::new();
 
-    let mut need_redraw = false;
+    let mut need_redraw = true;
 
     event_loop.run(move |event, _, control_flow| {
         control_flow.set_poll();
@@ -63,6 +72,7 @@ fn main() {
                 ..
             } => match window_event {
                 WindowEvent::CloseRequested => control_flow.set_exit(),
+                WindowEvent::Resized(_) => need_redraw = true,
                 WindowEvent::KeyboardInput { input, .. } => {
                     if input.state == ElementState::Released {
                         if let Some(code) = input.virtual_keycode {
@@ -84,7 +94,11 @@ fn main() {
                         .resize_surface(window_size.width, window_size.height)
                         .unwrap();
                     let processed_images = process_images(&images, &image_focus);
-                    draw(&mut pixels, &processed_images, (crop_width, crop_height));
+                    draw(
+                        &mut pixels,
+                        &processed_images,
+                        (args.crop_width, args.crop_height),
+                    );
                     window.request_redraw();
                     need_redraw = false;
                 }
