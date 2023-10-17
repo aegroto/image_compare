@@ -19,20 +19,16 @@ struct Args {
 }
 
 fn main() {
+    env_logger::init();
     println!("Hello, world!");
     let args = Args::parse();
 
-    println!("{:?}", args);
+    log::info!("{:?}", args);
 
     let images: Vec<_> = args
         .paths
         .iter()
-        .map(|path| {
-            image::io::Reader::open(path)
-                .unwrap()
-                .decode()
-                .unwrap()
-        })
+        .map(|path| image::io::Reader::open(path).unwrap().decode().unwrap())
         .collect();
 
     let crop_width: u32 = 768;
@@ -52,12 +48,8 @@ fn main() {
         Pixels::new(window_size.width, window_size.height, surface_texture).unwrap()
     };
 
-    draw(&mut pixels, &images, (crop_width, crop_height));
-    window.request_redraw();
-
     event_loop.run(move |event, _, control_flow| {
         control_flow.set_poll();
-
         match event {
             event::Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
@@ -66,6 +58,14 @@ fn main() {
                 control_flow.set_exit();
             }
             event::Event::RedrawRequested(_) => pixels.render().unwrap(),
+            event::Event::MainEventsCleared => {
+                log::info!("Redrawing...");
+                pixels
+                    .resize_surface(window.inner_size().width, window.inner_size().height)
+                    .unwrap();
+                draw(&mut pixels, &images, (crop_width, crop_height));
+                window.request_redraw();
+            }
             _ => (),
         }
     });
