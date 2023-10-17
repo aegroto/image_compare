@@ -1,5 +1,5 @@
 use clap::{command, Parser};
-use pixels::{SurfaceTexture, Pixels};
+use pixels::{Pixels, SurfaceTexture};
 use winit::{
     dpi::PhysicalSize,
     event::{self, WindowEvent},
@@ -24,10 +24,15 @@ fn main() {
 
     println!("{:?}", args);
 
-    let images: Vec<image::DynamicImage> = args
+    let images: Vec<_> = args
         .paths
         .iter()
-        .map(|path| image::io::Reader::open(path).unwrap().decode().unwrap())
+        .map(|path| {
+            image::io::Reader::open(path)
+                .unwrap()
+                .decode()
+                .unwrap()
+        })
         .collect();
 
     let crop_width: u32 = 768;
@@ -47,10 +52,11 @@ fn main() {
         Pixels::new(window_size.width, window_size.height, surface_texture).unwrap()
     };
 
+    draw(&mut pixels, &images, (crop_width, crop_height));
+    window.request_redraw();
+
     event_loop.run(move |event, _, control_flow| {
         control_flow.set_poll();
-        draw(&mut pixels, &images, (crop_width, crop_height));
-        window.request_redraw();
 
         match event {
             event::Event::WindowEvent {
